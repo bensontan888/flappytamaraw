@@ -11,6 +11,7 @@
   <link rel="apple-touch-icon" href="apple-touch-icon.png">
   <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
   <link rel="icon" type="image/png" sizes="512x512" href="icon-512.png">
+  <link rel="manifest" href="manifest.webmanifest">
   <style>
     * { box-sizing: border-box; }
     html, body {
@@ -40,6 +41,12 @@
   <canvas id="game" aria-label="Flappy Tamaraw game"></canvas>
 
   <script>
+    if ("serviceWorker" in navigator) {
+      window.addEventListener("load", () => {
+        navigator.serviceWorker.register("service-worker.js").catch(() => {});
+      });
+    }
+
     const BASE_W = 540;
     const BASE_H = 820;
     const GROUND = 92;

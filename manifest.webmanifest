@@ -1,0 +1,25 @@
+{
+  "name": "Flappy Tamaraw",
+  "short_name": "Flappy Tamaraw",
+  "description": "A Flappy Bird-style Tamaraw game set in a futuristic FEU Tech innovation city.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "fullscreen",
+  "orientation": "portrait",
+  "background_color": "#76c9df",
+  "theme_color": "#0b6b32",
+  "icons": [
+    {
+      "src": "icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
