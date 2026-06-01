@@ -1,0 +1,436 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Flappy Tamaraw</title>
+  <style>
+    * { box-sizing: border-box; }
+    html, body {
+      margin: 0;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background: #17242c;
+      color: #fff;
+      font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      touch-action: none;
+      user-select: none;
+    }
+    body {
+      display: grid;
+      place-items: center;
+    }
+    canvas {
+      width: 100vw;
+      height: 100vh;
+      display: block;
+      background: #76c9df;
+    }
+  </style>
+</head>
+<body>
+  <canvas id="game" aria-label="Flappy Tamaraw game"></canvas>
+
+  <script>
+    const BASE_W = 540;
+    const BASE_H = 820;
+    const GROUND = 92;
+    const GAP = 184;
+    const canvas = document.getElementById("game");
+    const ctx = canvas.getContext("2d");
+
+    const spriteNames = ["idle", "hop", "air_up", "air_peak", "air_down", "land", "game_over"];
+    const sprites = {};
+    let loaded = 0;
+    for (const name of spriteNames) {
+      const img = new Image();
+      img.onload = () => loaded++;
+      img.src = `flappy-tamaraw-assets/${name}.png`;
+      sprites[name] = img;
+    }
+
+    const categories = [
+      ["FEU Tech", ["Future Ready Learning", "Technology for Impact", "Innovation in Action", "Home of the Tamaraws"]],
+      ["SMART Learning", ["AI-Powered Education", "Mentor-Guided Learning", "Adaptive Learning", "Care at Scale"]],
+      ["MILES", ["Personalized Student Success", "Connected Student Journey", "Learning Companion"]],
+      ["PULSE Analytics", ["Student Success Analytics", "Early Intervention Engine", "Real-Time Insights"]],
+      ["PARAVERSE", ["The Digital University Ecosystem", "Learning. Engagement. Career.", "One Connected Student Journey"]],
+      ["WURI Global Recognition", ["Top 6% Globally", "WURI Global Top 117", "Global Top 3 PARAVERSE"]],
+      ["Engineering", ["Engineering District", "Computer Engineering", "Robotics Lab"]],
+      ["Computing", ["Computer Science", "Cybersecurity", "Data Science"]],
+      ["Multimedia Arts", ["Creative District", "Game Development", "UI/UX Design"]],
+      ["Esports", ["Esports Arena", "Digital Competition", "Creative Tech"]],
+      ["Student Success", ["Future-Ready Graduates", "Care at Scale", "Student Journey Paths"]]
+    ];
+
+    const state = {
+      mode: "ready",
+      tick: 0,
+      score: 0,
+      best: Number(localStorage.getItem("flappy-tamaraw-best") || 0),
+      speed: 3,
+      frame: "idle",
+      hopTicks: 0,
+      gates: [],
+      player: { x: 140, y: 330, vy: 0, r: 24 },
+      scale: 1,
+      offsetX: 0,
+      offsetY: 0,
+      worldMinX: 0,
+      worldMaxX: BASE_W,
+      worldMinY: 0,
+      worldMaxY: BASE_H
+    };
+
+    function resize() {
+      const ratio = window.devicePixelRatio || 1;
+      canvas.width = Math.floor(innerWidth * ratio);
+      canvas.height = Math.floor(innerHeight * ratio);
+      canvas.style.width = `${innerWidth}px`;
+      canvas.style.height = `${innerHeight}px`;
+      ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
+      updateViewBounds();
+    }
+
+    function updateViewBounds() {
+      state.scale = Math.min(innerWidth / BASE_W, innerHeight / BASE_H);
+      const scaledW = BASE_W * state.scale;
+      const scaledH = BASE_H * state.scale;
+      state.offsetX = (innerWidth - scaledW) / 2;
+      state.offsetY = (innerHeight - scaledH) / 2;
+      state.worldMinX = -state.offsetX / state.scale;
+      state.worldMaxX = BASE_W + state.offsetX / state.scale;
+      state.worldMinY = -state.offsetY / state.scale;
+      state.worldMaxY = BASE_H + state.offsetY / state.scale;
+    }
+
+    function reset() {
+      state.mode = "ready";
+      state.tick = 0;
+      state.score = 0;
+      state.speed = 3;
+      state.frame = "idle";
+      state.hopTicks = 0;
+      state.player = { x: 140, y: 330, vy: 0, r: 24 };
+      state.gates = [];
+      addGate(BASE_W + 160);
+      addGate(BASE_W + 450);
+    }
+
+    function input(event) {
+      event?.preventDefault();
+      if (state.mode === "ended") {
+        reset();
+        return;
+      }
+      if (state.mode === "ready") state.mode = "playing";
+      if (state.mode === "playing") {
+        state.player.vy = -7.8;
+        state.frame = "hop";
+        state.hopTicks = 7;
+      }
+    }
+
+    function addGate(x) {
+      const top = 95 + Math.random() * (BASE_H - GROUND - GAP - 210);
+      state.gates.push({ x, top, w: 74, passed: false });
+    }
+
+    function update() {
+      state.tick++;
+      updateViewBounds();
+      if (state.mode === "ready") {
+        state.player.y = 330 + Math.sin(state.tick / 13) * 9;
+        return;
+      }
+      if (state.mode !== "playing") return;
+
+      state.speed = Math.min(5, state.speed + 0.001);
+      state.player.vy += 0.43;
+      state.player.y += state.player.vy;
+
+      for (const gate of state.gates) {
+        gate.x -= state.speed;
+        if (!gate.passed && gate.x + gate.w < state.player.x) {
+          gate.passed = true;
+          state.score++;
+        }
+      }
+      while (state.gates.length && state.gates[0].x + state.gates[0].w < state.worldMinX - 120) state.gates.shift();
+      while (state.gates.length && state.gates[state.gates.length - 1].x < state.worldMaxX - 300) {
+        addGate(state.gates[state.gates.length - 1].x + 290);
+      }
+
+      const p = state.player;
+      if (p.y - p.r < 0 || p.y + p.r > BASE_H - GROUND) endGame();
+      for (const gate of state.gates) {
+        const inX = p.x + p.r > gate.x && p.x - p.r < gate.x + gate.w;
+        const inGap = p.y - p.r > gate.top && p.y + p.r < gate.top + GAP;
+        if (inX && !inGap) endGame();
+      }
+    }
+
+    function endGame() {
+      if (state.mode !== "playing") return;
+      state.mode = "ended";
+      state.best = Math.max(state.best, state.score);
+      localStorage.setItem("flappy-tamaraw-best", String(state.best));
+    }
+
+    function frameName() {
+      if (state.mode === "ended") return "game_over";
+      if (state.mode === "ready") return "idle";
+      if (state.hopTicks > 0) {
+        state.hopTicks--;
+        return "hop";
+      }
+      if (state.player.y + state.player.r > BASE_H - GROUND - 16) return "land";
+      if (state.player.vy < -3.2) return "air_up";
+      if (state.player.vy < 2.4) return "air_peak";
+      return "air_down";
+    }
+
+    function draw() {
+      ctx.setTransform(window.devicePixelRatio || 1, 0, 0, window.devicePixelRatio || 1, 0, 0);
+      ctx.clearRect(0, 0, innerWidth, innerHeight);
+      ctx.save();
+      ctx.translate(state.offsetX, state.offsetY);
+      ctx.scale(state.scale, state.scale);
+      drawSky();
+      drawGates();
+      drawGround();
+      drawPlayer();
+      drawHud();
+      if (state.mode !== "playing") drawPanel();
+      ctx.restore();
+    }
+
+    function drawSky() {
+      const grad = ctx.createLinearGradient(0, state.worldMinY, 0, state.worldMaxY);
+      grad.addColorStop(0, "#76c9df");
+      grad.addColorStop(0.55, "#a7ddc7");
+      grad.addColorStop(1, "#f1d78b");
+      ctx.fillStyle = grad;
+      ctx.fillRect(state.worldMinX - 80, state.worldMinY - 80, state.worldMaxX - state.worldMinX + 160, state.worldMaxY - state.worldMinY + 160);
+
+      for (let i = 0; i < Math.floor((state.worldMaxX - state.worldMinX) / 120) + 4; i++) {
+        const x = state.worldMinX + ((i * 139 - state.tick * 0.35) % (state.worldMaxX - state.worldMinX + 180)) - 60;
+        const y = 70 + (i % 4) * 78;
+        cloud(x, y, 1 + (i % 3) * 0.18);
+      }
+      banners();
+      city();
+      hills(BASE_H - GROUND - 22, 42, "#50756d", 0.012);
+      hills(BASE_H - GROUND - 4, 32, "#38655d", 0.02);
+    }
+
+    function cloud(x, y, s) {
+      ctx.fillStyle = "rgba(255,255,255,.44)";
+      ellipse(x, y, 36 * s, 18 * s);
+      ellipse(x + 30 * s, y + 3 * s, 28 * s, 15 * s);
+      ellipse(x - 27 * s, y + 4 * s, 22 * s, 13 * s);
+    }
+
+    function banners() {
+      const unlocked = categories.slice(0, Math.min(categories.length, 4 + Math.floor(state.score / 4)));
+      const spacing = 250;
+      const drift = (state.tick * 0.34) % spacing;
+      const start = Math.floor(state.tick * 0.34 / spacing);
+      const rows = [104, 238, 366];
+      const visible = Math.floor((state.worldMaxX - state.worldMinX) / spacing) + 5;
+      for (let slot = 0; slot < visible; slot++) {
+        const seed = start + slot;
+        if (seed % 5 === 3) continue;
+        const x = state.worldMinX + slot * spacing - drift - 70;
+        const y = rows[(seed * 7) % rows.length] + ((seed * 13) % 18);
+        const cat = unlocked[(seed * 5 + state.score) % unlocked.length];
+        const text = cat[1][(seed * 3 + state.score) % cat[1].length];
+        ctx.fillStyle = "#0b6b32";
+        ctx.strokeStyle = "#f5d000";
+        ctx.lineWidth = 3;
+        roundedRect(x, y, 198, 64, 4, true, true);
+        textCenter(text, x + 99, y + 22, "#ffdd00", "bold 11px Helvetica", 176);
+        textCenter(cat[0], x + 99, y + 46, "#eaffde", "bold 8px Helvetica", 176);
+      }
+    }
+
+    function city() {
+      const base = BASE_H - GROUND - 12;
+      const count = Math.floor((state.worldMaxX - state.worldMinX) / 88) + 4;
+      const shift = state.tick * 0.08;
+      for (let i = 0; i < count; i++) {
+        const x = state.worldMinX + i * 88 - (shift % 88);
+        const h = 60 + (i % 3) * 32;
+        ctx.fillStyle = "#244e57";
+        ctx.fillRect(x, base - h, 54, h);
+        for (let wy = base - h + 12; wy < base - 8; wy += 18) {
+          ctx.fillStyle = "#f7d84a";
+          ctx.fillRect(x + 9, wy, 9, 7);
+          ctx.fillStyle = "#8ff3dc";
+          ctx.fillRect(x + 30, wy, 9, 7);
+        }
+      }
+    }
+
+    function hills(base, amp, color, drift) {
+      ctx.fillStyle = color;
+      ctx.beginPath();
+      ctx.moveTo(state.worldMinX - 80, state.worldMaxY + 80);
+      for (let x = state.worldMinX - 80; x <= state.worldMaxX + 120; x += 40) {
+        ctx.lineTo(x, base + Math.sin((x + state.tick * drift * 60) / 72) * amp);
+      }
+      ctx.lineTo(state.worldMaxX + 80, state.worldMaxY + 80);
+      ctx.closePath();
+      ctx.fill();
+    }
+
+    function drawGates() {
+      for (const gate of state.gates) {
+        gatePiece(gate.x, state.worldMinY - 80, gate.w, gate.top - state.worldMinY + 80, true);
+        gatePiece(gate.x, gate.top + GAP, gate.w, state.worldMaxY - gate.top - GAP + 80, false);
+      }
+    }
+
+    function gatePiece(x, y, w, h, flip) {
+      const grad = ctx.createLinearGradient(x, 0, x + w, 0);
+      grad.addColorStop(0, "#2f7f6a");
+      grad.addColorStop(0.5, "#63c389");
+      grad.addColorStop(1, "#1f5f58");
+      ctx.fillStyle = grad;
+      ctx.fillRect(x, y, w, h);
+      ctx.fillStyle = "rgba(255,255,255,.16)";
+      ctx.fillRect(x + 10, y + 8, 10, Math.max(0, h - 16));
+      if (h > 92) {
+        const labels = ["SMART", "PULSE", "AI TUTOR", "WURI", "PARAVERSE", "MILES", "CYBER", "GAME DEV"];
+        const label = labels[Math.abs(Math.floor(x / 80) + state.score) % labels.length];
+        const ly = y + h / 2;
+        ctx.fillStyle = "#0b6b32";
+        ctx.strokeStyle = "#ffdd00";
+        ctx.lineWidth = 2;
+        ctx.fillRect(x + 12, ly - 30, w - 24, 60);
+        ctx.strokeRect(x + 12, ly - 30, w - 24, 60);
+        textCenter(label, x + w / 2, ly + 3, "#fff", "bold 8px Helvetica", w - 18);
+      }
+      const lipY = flip ? y + h - 24 : y;
+      ctx.fillStyle = "#1d6256";
+      ctx.fillRect(x - 9, lipY, w + 18, 24);
+      ctx.fillStyle = "#7adf98";
+      ctx.fillRect(x - 5, lipY + 4, w + 10, 5);
+    }
+
+    function drawGround() {
+      ctx.fillStyle = "#24534a";
+      ctx.fillRect(state.worldMinX - 80, BASE_H - GROUND, state.worldMaxX - state.worldMinX + 160, state.worldMaxY - BASE_H + GROUND + 80);
+      ctx.fillStyle = "#f0c85e";
+      ctx.fillRect(state.worldMinX - 80, BASE_H - GROUND, state.worldMaxX - state.worldMinX + 160, 10);
+      ctx.fillStyle = "#5d8172";
+      const offset = (state.tick * state.speed * 0.35) % 38;
+      for (let x = state.worldMinX - 80; x < state.worldMaxX + 90; x += 38) {
+        ctx.fillRect(x - offset, BASE_H - GROUND + 28, 24, 6);
+      }
+    }
+
+    function drawPlayer() {
+      const frame = frameName();
+      const img = sprites[frame];
+      const [dx, dy] = offset(frame);
+      if (img && img.complete) ctx.drawImage(img, state.player.x + dx - img.width / 2, state.player.y + dy - img.height / 2);
+    }
+
+    function offset(frame) {
+      return {
+        idle: [0, 14], hop: [0, 8], air_up: [0, 5], air_peak: [0, 8],
+        air_down: [0, 11], land: [0, 22], game_over: [0, 8]
+      }[frame] || [0, 12];
+    }
+
+    function drawHud() {
+      ctx.textAlign = "left";
+      ctx.fillStyle = "#f8fbef";
+      ctx.font = "bold 13px Helvetica";
+      ctx.fillText("FLAPPY TAMARAW", 24, 34);
+      ctx.fillStyle = "#fff0ad";
+      ctx.font = "bold 10px Helvetica";
+      ctx.fillText("Future FEU Tech Innovation City", 24, 54);
+      ctx.textAlign = "right";
+      ctx.fillStyle = "#fff";
+      ctx.font = "bold 42px Helvetica";
+      ctx.fillText(state.score, BASE_W - 24, 56);
+    }
+
+    function drawPanel() {
+      const x = 82, y = 286, w = BASE_W - 164, h = 194;
+      ctx.fillStyle = "#1d2933";
+      ctx.fillRect(x + 4, y + 8, w, h);
+      ctx.fillStyle = "#23313c";
+      ctx.strokeStyle = "#e9f4df";
+      ctx.lineWidth = 2;
+      roundedRect(x, y, w, h, 8, true, true);
+      textCenter(state.mode === "ended" ? "Hop Over" : "Flappy Tamaraw", BASE_W / 2, y + 52, "#fff", "bold 36px Helvetica", w - 30);
+      if (state.mode === "ended") {
+        textCenter(`Score ${state.score}    Best ${state.best}`, BASE_W / 2, y + 110, "#fff0ad", "bold 18px Helvetica", w - 30);
+        textCenter("Tap or press Space to retry.", BASE_W / 2, y + 142, "#d8eee0", "16px Helvetica", w - 30);
+      } else {
+        textCenter("Tap, click, or press Space", BASE_W / 2, y + 110, "#fff0ad", "bold 18px Helvetica", w - 30);
+        textCenter("to keep the tamaraw hopping.", BASE_W / 2, y + 142, "#d8eee0", "16px Helvetica", w - 30);
+      }
+    }
+
+    function roundedRect(x, y, w, h, r, fill, stroke) {
+      ctx.beginPath();
+      ctx.moveTo(x + r, y);
+      ctx.arcTo(x + w, y, x + w, y + h, r);
+      ctx.arcTo(x + w, y + h, x, y + h, r);
+      ctx.arcTo(x, y + h, x, y, r);
+      ctx.arcTo(x, y, x + w, y, r);
+      ctx.closePath();
+      if (fill) ctx.fill();
+      if (stroke) ctx.stroke();
+    }
+
+    function textCenter(text, x, y, color, font, width) {
+      ctx.fillStyle = color;
+      ctx.font = font;
+      ctx.textAlign = "center";
+      const words = String(text).split(" ");
+      let line = "";
+      const lines = [];
+      for (const word of words) {
+        const test = line ? `${line} ${word}` : word;
+        if (ctx.measureText(test).width > width && line) {
+          lines.push(line);
+          line = word;
+        } else {
+          line = test;
+        }
+      }
+      lines.push(line);
+      const start = y - (lines.length - 1) * 7;
+      lines.forEach((lineText, i) => ctx.fillText(lineText, x, start + i * 14));
+    }
+
+    function ellipse(x, y, rx, ry) {
+      ctx.beginPath();
+      ctx.ellipse(x, y, rx, ry, 0, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    function loop() {
+      update();
+      draw();
+      requestAnimationFrame(loop);
+    }
+
+    addEventListener("resize", resize);
+    addEventListener("pointerdown", input);
+    addEventListener("keydown", event => {
+      if (event.code === "Space" || event.code === "ArrowUp") input(event);
+    });
+
+    resize();
+    reset();
+    loop();
+  </script>
+</body>
+</html>
