@@ -269,12 +269,8 @@
         const y = rows[(seed * 7) % rows.length] + ((seed * 13) % 18);
         const cat = unlocked[(seed * 5 + state.score) % unlocked.length];
         const text = cat[1][(seed * 3 + state.score) % cat[1].length];
-        ctx.fillStyle = "#0b6b32";
-        ctx.strokeStyle = "#f5d000";
-        ctx.lineWidth = 3;
-        roundedRect(x, y, 198, 64, 4, true, true);
-        textCenter(text, x + 99, y + 22, "#ffdd00", "bold 11px Helvetica", 176);
-        textCenter(cat[0], x + 99, y + 46, "#eaffde", "bold 8px Helvetica", 176);
+        skyText(text, x + 106, y + 24, "#ffdd00", "bold 18px Helvetica", 208);
+        skyText(cat[0], x + 106, y + 52, "#efffe8", "bold 12px Helvetica", 208);
       }
     }
 
@@ -377,9 +373,16 @@
       ctx.font = "bold 10px Helvetica";
       ctx.fillText("Future FEU Tech Innovation City", 24, 54);
       ctx.textAlign = "right";
+      ctx.lineWidth = 4;
+      ctx.strokeStyle = "rgba(6, 48, 32, .75)";
       ctx.fillStyle = "#fff";
-      ctx.font = "bold 42px Helvetica";
-      ctx.fillText(state.score, BASE_W - 24, 56);
+      ctx.font = "bold 22px Helvetica";
+      ctx.strokeText(`Score ${state.score}`, BASE_W - 24, 34);
+      ctx.fillText(`Score ${state.score}`, BASE_W - 24, 34);
+      ctx.fillStyle = "#fff0ad";
+      ctx.font = "bold 15px Helvetica";
+      ctx.strokeText(`Best ${state.best}`, BASE_W - 24, 56);
+      ctx.fillText(`Best ${state.best}`, BASE_W - 24, 56);
     }
 
     function drawPanel() {
@@ -392,7 +395,7 @@
       roundedRect(x, y, w, h, 8, true, true);
       textCenter(state.mode === "ended" ? "Hop Over" : "Flappy Tamaraw", BASE_W / 2, y + 52, "#fff", "bold 36px Helvetica", w - 30);
       if (state.mode === "ended") {
-        textCenter(`Score ${state.score}    Best ${state.best}`, BASE_W / 2, y + 110, "#fff0ad", "bold 18px Helvetica", w - 30);
+        textCenter(`Score ${state.score}    Best ${state.best}`, BASE_W / 2, y + 110, "#fff0ad", "bold 20px Helvetica", w - 30);
         textCenter("Tap or press Space to retry.", BASE_W / 2, y + 142, "#d8eee0", "16px Helvetica", w - 30);
       } else {
         textCenter("Tap, click, or press Space", BASE_W / 2, y + 110, "#fff0ad", "bold 18px Helvetica", w - 30);
@@ -412,8 +415,29 @@
       if (stroke) ctx.stroke();
     }
 
+    function skyText(text, x, y, color, font, width) {
+      ctx.save();
+      ctx.lineWidth = 4;
+      ctx.strokeStyle = "rgba(6, 48, 32, .78)";
+      ctx.shadowColor = "rgba(0, 0, 0, .25)";
+      ctx.shadowBlur = 3;
+      ctx.shadowOffsetY = 2;
+      wrappedText(text, x, y, font, width, line => {
+        ctx.strokeText(line.text, line.x, line.y);
+        ctx.fillStyle = color;
+        ctx.fillText(line.text, line.x, line.y);
+      });
+      ctx.restore();
+    }
+
     function textCenter(text, x, y, color, font, width) {
       ctx.fillStyle = color;
+      ctx.font = font;
+      ctx.textAlign = "center";
+      wrappedText(text, x, y, font, width, line => ctx.fillText(line.text, line.x, line.y));
+    }
+
+    function wrappedText(text, x, y, font, width, drawLine) {
       ctx.font = font;
       ctx.textAlign = "center";
       const words = String(text).split(" ");
@@ -430,7 +454,7 @@
       }
       lines.push(line);
       const start = y - (lines.length - 1) * 7;
-      lines.forEach((lineText, i) => ctx.fillText(lineText, x, start + i * 14));
+      lines.forEach((lineText, i) => drawLine({ text: lineText, x, y: start + i * 14 }));
     }
 
     function ellipse(x, y, rx, ry) {
