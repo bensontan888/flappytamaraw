@@ -1,6 +1,6 @@
 {
-  "name": "Flappy Tamaraw",
-  "short_name": "Flappy Tamaraw",
+  "name": "Hoppy Tamaraw",
+  "short_name": "Hoppy Tamaraw",
   "description": "A Flappy Bird-style Tamaraw game set in a futuristic FEU Tech innovation city.",
   "start_url": "./",
   "scope": "./",

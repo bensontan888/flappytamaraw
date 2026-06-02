@@ -3,10 +3,10 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <title>Flappy Tamaraw</title>
+  <title>Hoppy Tamaraw</title>
   <meta name="theme-color" content="#0b6b32">
   <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-title" content="Flappy Tamaraw">
+  <meta name="apple-mobile-web-app-title" content="Hoppy Tamaraw">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <link rel="apple-touch-icon" href="apple-touch-icon.png">
   <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
@@ -38,7 +38,7 @@
   </style>
 </head>
 <body>
-  <canvas id="game" aria-label="Flappy Tamaraw game"></canvas>
+  <canvas id="game" aria-label="Hoppy Tamaraw game"></canvas>
 
   <script>
     if ("serviceWorker" in navigator) {
@@ -368,7 +368,7 @@
       ctx.textAlign = "left";
       ctx.fillStyle = "#f8fbef";
       ctx.font = "bold 13px Helvetica";
-      ctx.fillText("FLAPPY TAMARAW", 24, 34);
+      ctx.fillText("HOPPY TAMARAW", 24, 34);
       ctx.fillStyle = "#fff0ad";
       ctx.font = "bold 10px Helvetica";
       ctx.fillText("Future FEU Tech Innovation City", 24, 54);
@@ -393,7 +393,7 @@
       ctx.strokeStyle = "#e9f4df";
       ctx.lineWidth = 2;
       roundedRect(x, y, w, h, 8, true, true);
-      textCenter(state.mode === "ended" ? "Hop Over" : "Flappy Tamaraw", BASE_W / 2, y + 52, "#fff", "bold 36px Helvetica", w - 30);
+      textCenter(state.mode === "ended" ? "Hop Over" : "Hoppy Tamaraw", BASE_W / 2, y + 52, "#fff", "bold 36px Helvetica", w - 30);
       if (state.mode === "ended") {
         textCenter(`Score ${state.score}    Best ${state.best}`, BASE_W / 2, y + 110, "#fff0ad", "bold 20px Helvetica", w - 30);
         textCenter("Tap or press Space to retry.", BASE_W / 2, y + 142, "#d8eee0", "16px Helvetica", w - 30);
