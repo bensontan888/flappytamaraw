@@ -93,6 +93,7 @@
       score: 0,
       best: Number(localStorage.getItem("flappy-tamaraw-best") || 0),
       speed: 3,
+      lastTime: 0,
       frame: "idle",
       hopTicks: 0,
       gates: [],
@@ -133,6 +134,7 @@
       state.tick = 0;
       state.score = 0;
       state.speed = 3;
+      state.lastTime = 0;
       state.frame = "idle";
       state.hopTicks = 0;
       state.player = { x: 140, y: 330, vy: 0, r: 24 };
@@ -160,8 +162,8 @@
       state.gates.push({ x, top, w: 74, passed: false });
     }
 
-    function update() {
-      state.tick++;
+    function update(dt) {
+      state.tick += dt;
       updateViewBounds();
       if (state.mode === "ready") {
         state.player.y = 330 + Math.sin(state.tick / 13) * 9;
@@ -169,12 +171,12 @@
       }
       if (state.mode !== "playing") return;
 
-      state.speed = Math.min(5, state.speed + 0.001);
-      state.player.vy += 0.43;
-      state.player.y += state.player.vy;
+      state.speed = Math.min(5, state.speed + 0.001 * dt);
+      state.player.vy += 0.43 * dt;
+      state.player.y += state.player.vy * dt;
 
       for (const gate of state.gates) {
-        gate.x -= state.speed;
+        gate.x -= state.speed * dt;
         if (!gate.passed && gate.x + gate.w < state.player.x) {
           gate.passed = true;
           state.score++;
@@ -205,7 +207,6 @@
       if (state.mode === "ended") return "game_over";
       if (state.mode === "ready") return "idle";
       if (state.hopTicks > 0) {
-        state.hopTicks--;
         return "hop";
       }
       if (state.player.y + state.player.r > BASE_H - GROUND - 16) return "land";
@@ -463,8 +464,14 @@
       ctx.fill();
     }
 
-    function loop() {
-      update();
+    function loop(timestamp = 0) {
+      const elapsed = state.lastTime ? timestamp - state.lastTime : 16.67;
+      state.lastTime = timestamp;
+      const dt = Math.min(2, Math.max(0.25, elapsed / 16.67));
+      if (state.hopTicks > 0 && state.mode === "playing") {
+        state.hopTicks = Math.max(0, state.hopTicks - dt);
+      }
+      update(dt);
       draw();
       requestAnimationFrame(loop);
     }
