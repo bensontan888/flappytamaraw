@@ -111,6 +111,8 @@
       enabled: false,
       unlocking: null,
       clips: {},
+      clipPools: {},
+      clipCursor: {},
       clipsReady: false
     };
     const audioClipSources = {
@@ -167,20 +169,32 @@
     function setupAudioClips() {
       if (audio.clipsReady || typeof Audio === "undefined") return;
       audio.clipsReady = true;
+      const poolSizes = { hop: 8, score: 3, gameOver: 2 };
       for (const [name, src] of Object.entries(audioClipSources)) {
-        const clip = new Audio(src);
-        clip.preload = "auto";
-        clip.volume = 0.85;
-        audio.clips[name] = clip;
+        const size = poolSizes[name] || 2;
+        audio.clipPools[name] = Array.from({ length: size }, () => {
+          const clip = new Audio(src);
+          clip.preload = "auto";
+          clip.volume = name === "hop" ? 1 : 0.85;
+          clip.load();
+          return clip;
+        });
+        audio.clipCursor[name] = 0;
+        audio.clips[name] = audio.clipPools[name][0];
       }
     }
 
     function playClip(name) {
       setupAudioClips();
-      const src = audioClipSources[name];
-      if (!src || typeof Audio === "undefined") return;
-      const clip = new Audio(src);
-      clip.volume = 1;
+      const pool = audio.clipPools[name];
+      if (!pool || !pool.length) return;
+      const index = audio.clipCursor[name] % pool.length;
+      audio.clipCursor[name] = index + 1;
+      const clip = pool[index];
+      try {
+        clip.pause();
+        clip.currentTime = 0;
+      } catch (error) {}
       clip.play().catch(() => {});
     }
 
@@ -209,7 +223,6 @@
 
     function hopSound() {
       playClip("hop");
-      tone({ type: "triangle", start: 520, end: 1100, duration: 0.12, gain: 0.16 });
     }
 
     function scoreSound() {

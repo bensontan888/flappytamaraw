@@ -1,4 +1,4 @@
-const CACHE_NAME = "hoppy-tamaraw-v11";
+const CACHE_NAME = "hoppy-tamaraw-v12";
 const ASSETS = [
   "./",
   "./index.html",
