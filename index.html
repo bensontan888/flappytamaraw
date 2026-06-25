@@ -263,9 +263,8 @@
     }
 
     function scoreSound() {
-      playClip("score");
-      tone({ type: "sine", start: 660, end: 980, duration: 0.12, gain: 0.06 });
-      setTimeout(() => tone({ type: "sine", start: 880, end: 1320, duration: 0.1, gain: 0.045 }), 70);
+      tone({ type: "sine", start: 740, end: 1180, duration: 0.09, gain: 0.11 });
+      setTimeout(() => tone({ type: "sine", start: 980, end: 1480, duration: 0.08, gain: 0.08 }), 55);
     }
 
     function gameOverSound() {
