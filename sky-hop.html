@@ -1,0 +1,368 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Sky Hop</title>
+  <style>
+    * { box-sizing: border-box; }
+    html, body {
+      margin: 0;
+      min-height: 100%;
+      overflow: hidden;
+      background: #19212c;
+      color: #f6f7ef;
+      font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+    body {
+      display: grid;
+      place-items: center;
+    }
+    .wrap {
+      width: min(100vw, 540px);
+      height: min(100vh, 860px);
+      position: relative;
+      background: #283849;
+    }
+    canvas {
+      width: 100%;
+      height: 100%;
+      display: block;
+      touch-action: manipulation;
+      cursor: pointer;
+    }
+    .hud {
+      position: absolute;
+      inset: 18px 18px auto 18px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      pointer-events: none;
+      text-shadow: 0 2px 0 rgba(25, 33, 44, .35);
+    }
+    .brand {
+      font-weight: 800;
+      letter-spacing: .08em;
+      font-size: 13px;
+      text-transform: uppercase;
+    }
+    .score {
+      font-size: 42px;
+      line-height: 1;
+      font-weight: 900;
+      font-variant-numeric: tabular-nums;
+    }
+    .panel {
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      transform: translate(-50%, -50%);
+      width: min(84%, 360px);
+      padding: 22px;
+      text-align: center;
+      background: rgba(20, 28, 36, .72);
+      border: 1px solid rgba(246, 247, 239, .18);
+      box-shadow: 0 22px 70px rgba(0, 0, 0, .35);
+      backdrop-filter: blur(10px);
+      border-radius: 8px;
+    }
+    .panel[hidden] { display: none; }
+    h1 {
+      margin: 0 0 8px;
+      font-size: 40px;
+      line-height: 1;
+    }
+    p {
+      margin: 8px 0 0;
+      color: #d8eadf;
+      font-size: 16px;
+      line-height: 1.45;
+    }
+    .stats {
+      display: flex;
+      justify-content: center;
+      gap: 18px;
+      margin-top: 16px;
+      color: #fff2b8;
+      font-weight: 800;
+    }
+    .key {
+      display: inline-grid;
+      place-items: center;
+      min-width: 34px;
+      height: 28px;
+      padding: 0 8px;
+      border-radius: 6px;
+      background: rgba(255, 255, 255, .13);
+      border: 1px solid rgba(255, 255, 255, .22);
+      color: #fff;
+      font-size: 13px;
+      font-weight: 800;
+    }
+  </style>
+</head>
+<body>
+  <main class="wrap" aria-label="Sky Hop game">
+    <canvas id="game" width="540" height="860"></canvas>
+    <div class="hud">
+      <div class="brand">Sky Hop</div>
+      <div class="score" id="score">0</div>
+    </div>
+    <section class="panel" id="panel">
+      <h1 id="title">Sky Hop</h1>
+      <p id="message">Tap, click, or press <span class="key">Space</span> to keep the little glider aloft.</p>
+      <div class="stats" id="stats" hidden>
+        <span id="finalScore">Score 0</span>
+        <span id="bestScore">Best 0</span>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    const canvas = document.getElementById("game");
+    const ctx = canvas.getContext("2d");
+    const scoreEl = document.getElementById("score");
+    const panel = document.getElementById("panel");
+    const titleEl = document.getElementById("title");
+    const messageEl = document.getElementById("message");
+    const statsEl = document.getElementById("stats");
+    const finalScoreEl = document.getElementById("finalScore");
+    const bestScoreEl = document.getElementById("bestScore");
+
+    const W = canvas.width;
+    const H = canvas.height;
+    const groundH = 96;
+    const gap = 186;
+    const storageKey = "sky-hop-best";
+    const state = {
+      mode: "ready",
+      t: 0,
+      score: 0,
+      best: Number(localStorage.getItem(storageKey) || 0),
+      speed: 2.85,
+      glider: { x: 142, y: 330, r: 20, vy: 0, rot: 0 },
+      gates: [],
+      sparks: []
+    };
+
+    function reset() {
+      state.mode = "ready";
+      state.t = 0;
+      state.score = 0;
+      state.speed = 2.85;
+      state.glider = { x: 142, y: 330, r: 20, vy: 0, rot: 0 };
+      state.gates = [];
+      state.sparks = [];
+      addGate(W + 150);
+      addGate(W + 430);
+      scoreEl.textContent = "0";
+      titleEl.textContent = "Sky Hop";
+      messageEl.innerHTML = 'Tap, click, or press <span class="key">Space</span> to keep the little glider aloft.';
+      statsEl.hidden = true;
+      panel.hidden = false;
+    }
+
+    function start() {
+      if (state.mode === "ready") {
+        state.mode = "playing";
+        panel.hidden = true;
+      }
+      if (state.mode === "playing") {
+        state.glider.vy = -7.4;
+        state.sparks.push({ x: state.glider.x - 18, y: state.glider.y + 8, life: 1 });
+      } else if (state.mode === "ended") {
+        reset();
+      }
+    }
+
+    function addGate(x) {
+      const top = 104 + Math.random() * (H - groundH - gap - 230);
+      state.gates.push({ x, top, passed: false, w: 74 });
+    }
+
+    function endGame() {
+      if (state.mode !== "playing") return;
+      state.mode = "ended";
+      state.best = Math.max(state.best, state.score);
+      localStorage.setItem(storageKey, String(state.best));
+      titleEl.textContent = "Glide Over";
+      messageEl.innerHTML = 'Press <span class="key">Space</span> or tap to fly again.';
+      finalScoreEl.textContent = `Score ${state.score}`;
+      bestScoreEl.textContent = `Best ${state.best}`;
+      statsEl.hidden = false;
+      panel.hidden = false;
+    }
+
+    function update() {
+      state.t += 1 / 60;
+      if (state.mode === "playing") {
+        state.speed = Math.min(4.75, state.speed + 0.0008);
+        const g = state.glider;
+        g.vy += 0.43;
+        g.y += g.vy;
+        g.rot = Math.max(-0.65, Math.min(1.15, g.vy / 9));
+
+        for (const gate of state.gates) {
+          gate.x -= state.speed;
+          if (!gate.passed && gate.x + gate.w < g.x) {
+            gate.passed = true;
+            state.score += 1;
+            scoreEl.textContent = state.score;
+          }
+        }
+        if (state.gates[0].x < -100) state.gates.shift();
+        const last = state.gates[state.gates.length - 1];
+        if (last.x < W - 290) addGate(W + 40);
+
+        if (g.y - g.r < 0 || g.y + g.r > H - groundH) endGame();
+        for (const gate of state.gates) {
+          const inX = g.x + g.r > gate.x && g.x - g.r < gate.x + gate.w;
+          const inGap = g.y - g.r > gate.top && g.y + g.r < gate.top + gap;
+          if (inX && !inGap) endGame();
+        }
+      } else if (state.mode === "ready") {
+        state.glider.y = 330 + Math.sin(state.t * 3) * 8;
+        state.glider.rot = Math.sin(state.t * 2) * .1;
+      }
+      state.sparks = state.sparks
+        .map(s => ({ ...s, x: s.x - state.speed * .75, y: s.y + .35, life: s.life - .035 }))
+        .filter(s => s.life > 0);
+    }
+
+    function drawSky() {
+      const sky = ctx.createLinearGradient(0, 0, 0, H);
+      sky.addColorStop(0, "#72bed4");
+      sky.addColorStop(.55, "#9bd8cc");
+      sky.addColorStop(1, "#f2d68d");
+      ctx.fillStyle = sky;
+      ctx.fillRect(0, 0, W, H);
+
+      ctx.fillStyle = "rgba(255,255,255,.42)";
+      for (let i = 0; i < 7; i++) {
+        const x = ((i * 139 - state.t * 18) % (W + 120)) - 60;
+        const y = 70 + (i % 4) * 72;
+        cloud(x, y, 1 + (i % 3) * .18);
+      }
+
+      ctx.fillStyle = "#55736d";
+      hills(H - groundH - 30, 54, .25, "#55736d");
+      hills(H - groundH - 10, 42, .45, "#3d655f");
+    }
+
+    function cloud(x, y, s) {
+      ctx.beginPath();
+      ctx.ellipse(x, y, 36 * s, 18 * s, 0, 0, Math.PI * 2);
+      ctx.ellipse(x + 30 * s, y + 3 * s, 28 * s, 15 * s, 0, 0, Math.PI * 2);
+      ctx.ellipse(x - 27 * s, y + 4 * s, 22 * s, 13 * s, 0, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    function hills(base, height, speed, color) {
+      ctx.fillStyle = color;
+      ctx.beginPath();
+      ctx.moveTo(0, H);
+      for (let x = -40; x <= W + 40; x += 40) {
+        const y = base + Math.sin((x + state.t * 40 * speed) / 70) * height;
+        ctx.lineTo(x, y);
+      }
+      ctx.lineTo(W, H);
+      ctx.closePath();
+      ctx.fill();
+    }
+
+    function drawGates() {
+      for (const gate of state.gates) {
+        drawGate(gate.x, 0, gate.w, gate.top, true);
+        drawGate(gate.x, gate.top + gap, gate.w, H - groundH - gate.top - gap, false);
+      }
+    }
+
+    function drawGate(x, y, w, h, flip) {
+      const grad = ctx.createLinearGradient(x, 0, x + w, 0);
+      grad.addColorStop(0, "#2f7f6a");
+      grad.addColorStop(.5, "#63c389");
+      grad.addColorStop(1, "#1f5f58");
+      ctx.fillStyle = grad;
+      ctx.fillRect(x, y, w, h);
+      ctx.fillStyle = "rgba(255,255,255,.16)";
+      ctx.fillRect(x + 9, y + 8, 10, Math.max(0, h - 16));
+      ctx.fillStyle = "#18534d";
+      const lipY = flip ? y + h - 24 : y;
+      ctx.fillRect(x - 9, lipY, w + 18, 24);
+      ctx.fillStyle = "#7bd59a";
+      ctx.fillRect(x - 5, lipY + 4, w + 10, 5);
+    }
+
+    function drawGlider() {
+      const g = state.glider;
+      ctx.save();
+      ctx.translate(g.x, g.y);
+      ctx.rotate(g.rot);
+      ctx.fillStyle = "#f5ed5f";
+      ctx.beginPath();
+      ctx.moveTo(-24, -12);
+      ctx.lineTo(25, 0);
+      ctx.lineTo(-24, 13);
+      ctx.lineTo(-12, 0);
+      ctx.closePath();
+      ctx.fill();
+      ctx.fillStyle = "#e85b61";
+      ctx.beginPath();
+      ctx.arc(-12, 0, 15, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = "#203040";
+      ctx.beginPath();
+      ctx.arc(-7, -5, 3.5, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = "rgba(255,255,255,.75)";
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.moveTo(1, -8);
+      ctx.lineTo(20, -1);
+      ctx.stroke();
+      ctx.restore();
+
+      for (const s of state.sparks) {
+        ctx.globalAlpha = s.life;
+        ctx.fillStyle = "#fff2b8";
+        ctx.beginPath();
+        ctx.arc(s.x, s.y, 8 * s.life, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.globalAlpha = 1;
+      }
+    }
+
+    function drawGround() {
+      ctx.fillStyle = "#25514a";
+      ctx.fillRect(0, H - groundH, W, groundH);
+      ctx.fillStyle = "#f0c65d";
+      ctx.fillRect(0, H - groundH, W, 10);
+      ctx.fillStyle = "rgba(255,255,255,.16)";
+      for (let x = -40; x < W + 40; x += 38) {
+        const offset = (state.t * state.speed * 24) % 38;
+        ctx.fillRect(x - offset, H - groundH + 27, 24, 5);
+      }
+    }
+
+    function loop() {
+      update();
+      drawSky();
+      drawGates();
+      drawGround();
+      drawGlider();
+      requestAnimationFrame(loop);
+    }
+
+    addEventListener("pointerdown", start);
+    addEventListener("keydown", event => {
+      if (event.code === "Space" || event.code === "ArrowUp") {
+        event.preventDefault();
+        start();
+      }
+    });
+
+    reset();
+    loop();
+  </script>
+</body>
+</html>
