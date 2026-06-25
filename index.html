@@ -177,16 +177,17 @@
 
     function playClip(name) {
       setupAudioClips();
-      const clip = audio.clips[name];
-      if (!clip) return;
-      const instance = clip.cloneNode(true);
-      instance.volume = clip.volume;
-      instance.currentTime = 0;
-      instance.play().catch(() => {});
+      const src = audioClipSources[name];
+      if (!src || typeof Audio === "undefined") return;
+      const clip = new Audio(src);
+      clip.volume = 1;
+      clip.play().catch(() => {});
     }
 
     function playAfterUnlock(sound) {
-      unlockAudio().then(() => sound()).catch(() => sound());
+      setupAudioClips();
+      unlockAudio();
+      sound();
     }
 
     function tone({ type = "sine", start = 440, end = start, duration = 0.12, gain = 0.08 }) {
