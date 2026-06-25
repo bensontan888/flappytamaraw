@@ -106,6 +106,50 @@
       worldMinY: 0,
       worldMaxY: BASE_H
     };
+    const audio = {
+      ctx: null,
+      enabled: false
+    };
+
+    function unlockAudio() {
+      if (!audio.ctx) {
+        const AudioContext = window.AudioContext || window.webkitAudioContext;
+        if (!AudioContext) return;
+        audio.ctx = new AudioContext();
+      }
+      if (audio.ctx.state === "suspended") audio.ctx.resume();
+      audio.enabled = true;
+    }
+
+    function tone({ type = "sine", start = 440, end = start, duration = 0.12, gain = 0.08 }) {
+      if (!audio.enabled || !audio.ctx) return;
+      const now = audio.ctx.currentTime;
+      const osc = audio.ctx.createOscillator();
+      const amp = audio.ctx.createGain();
+      osc.type = type;
+      osc.frequency.setValueAtTime(start, now);
+      osc.frequency.exponentialRampToValueAtTime(Math.max(1, end), now + duration);
+      amp.gain.setValueAtTime(0.0001, now);
+      amp.gain.exponentialRampToValueAtTime(gain, now + 0.012);
+      amp.gain.exponentialRampToValueAtTime(0.0001, now + duration);
+      osc.connect(amp);
+      amp.connect(audio.ctx.destination);
+      osc.start(now);
+      osc.stop(now + duration + 0.02);
+    }
+
+    function hopSound() {
+      tone({ type: "triangle", start: 320, end: 620, duration: 0.11, gain: 0.07 });
+    }
+
+    function scoreSound() {
+      tone({ type: "sine", start: 660, end: 980, duration: 0.12, gain: 0.06 });
+      setTimeout(() => tone({ type: "sine", start: 880, end: 1320, duration: 0.1, gain: 0.045 }), 70);
+    }
+
+    function gameOverSound() {
+      tone({ type: "sawtooth", start: 180, end: 70, duration: 0.28, gain: 0.06 });
+    }
 
     function resize() {
       const ratio = window.devicePixelRatio || 1;
@@ -145,6 +189,7 @@
 
     function input(event) {
       event?.preventDefault();
+      unlockAudio();
       if (state.mode === "ended") {
         reset();
         return;
@@ -154,6 +199,7 @@
         state.player.vy = -7.8;
         state.frame = "hop";
         state.hopTicks = 7;
+        hopSound();
       }
     }
 
@@ -180,6 +226,7 @@
         if (!gate.passed && gate.x + gate.w < state.player.x) {
           gate.passed = true;
           state.score++;
+          scoreSound();
         }
       }
       while (state.gates.length && state.gates[0].x + state.gates[0].w < state.worldMinX - 120) state.gates.shift();
@@ -199,6 +246,7 @@
     function endGame() {
       if (state.mode !== "playing") return;
       state.mode = "ended";
+      gameOverSound();
       state.best = Math.max(state.best, state.score);
       localStorage.setItem("flappy-tamaraw-best", String(state.best));
     }
