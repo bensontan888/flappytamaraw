@@ -106,7 +106,9 @@
       worldMinX: 0,
       worldMaxX: BASE_W,
       worldMinY: 0,
-      worldMaxY: BASE_H
+      worldMaxY: BASE_H,
+      pixelRatio: 1,
+      isCompact: false
     };
     const audio = {
       ctx: null,
@@ -273,7 +275,9 @@
     }
 
     function resize() {
-      const ratio = window.devicePixelRatio || 1;
+      state.isCompact = Math.min(innerWidth, innerHeight) < 760 || "ontouchstart" in window;
+      const ratio = Math.min(window.devicePixelRatio || 1, state.isCompact ? 1.5 : 2);
+      state.pixelRatio = ratio;
       canvas.width = Math.floor(innerWidth * ratio);
       canvas.height = Math.floor(innerHeight * ratio);
       canvas.style.width = `${innerWidth}px`;
@@ -388,7 +392,7 @@
     }
 
     function draw() {
-      ctx.setTransform(window.devicePixelRatio || 1, 0, 0, window.devicePixelRatio || 1, 0, 0);
+      ctx.setTransform(state.pixelRatio, 0, 0, state.pixelRatio, 0, 0);
       ctx.clearRect(0, 0, innerWidth, innerHeight);
       ctx.save();
       ctx.translate(state.offsetX, state.offsetY);
@@ -403,6 +407,7 @@
     }
 
     function drawSky() {
+      const fastBackground = state.isCompact && state.mode === "playing" && state.score >= 18;
       const grad = ctx.createLinearGradient(0, state.worldMinY, 0, state.worldMaxY);
       grad.addColorStop(0, "#76c9df");
       grad.addColorStop(0.55, "#a7ddc7");
@@ -410,15 +415,17 @@
       ctx.fillStyle = grad;
       ctx.fillRect(state.worldMinX - 80, state.worldMinY - 80, state.worldMaxX - state.worldMinX + 160, state.worldMaxY - state.worldMinY + 160);
 
-      for (let i = 0; i < Math.floor((state.worldMaxX - state.worldMinX) / 120) + 4; i++) {
+      const cloudStep = fastBackground ? 210 : 120;
+      const cloudExtra = fastBackground ? 2 : 4;
+      for (let i = 0; i < Math.floor((state.worldMaxX - state.worldMinX) / cloudStep) + cloudExtra; i++) {
         const x = state.worldMinX + ((i * 139 - state.tick * 0.35) % (state.worldMaxX - state.worldMinX + 180)) - 60;
         const y = 70 + (i % 4) * 78;
         cloud(x, y, 1 + (i % 3) * 0.18);
       }
-      banners();
-      city();
-      hills(BASE_H - GROUND - 22, 42, "#50756d", 0.012);
-      hills(BASE_H - GROUND - 4, 32, "#38655d", 0.02);
+      banners(fastBackground);
+      city(fastBackground);
+      hills(BASE_H - GROUND - 22, fastBackground ? 28 : 42, "#50756d", fastBackground ? 0.006 : 0.012);
+      if (!fastBackground) hills(BASE_H - GROUND - 4, 32, "#38655d", 0.02);
     }
 
     function cloud(x, y, s) {
@@ -428,34 +435,45 @@
       ellipse(x - 27 * s, y + 4 * s, 22 * s, 13 * s);
     }
 
-    function banners() {
+    function banners(fastBackground = false) {
       const unlocked = categories.slice(0, Math.min(categories.length, 4 + Math.floor(state.score / 4)));
-      const spacing = 250;
+      const spacing = fastBackground ? 390 : state.isCompact ? 310 : 250;
       const drift = (state.tick * 0.34) % spacing;
       const start = Math.floor(state.tick * 0.34 / spacing);
-      const rows = [104, 238, 366];
-      const visible = Math.floor((state.worldMaxX - state.worldMinX) / spacing) + 5;
+      const rows = fastBackground ? [126, 318] : state.isCompact ? [112, 300] : [104, 238, 366];
+      const visible = Math.floor((state.worldMaxX - state.worldMinX) / spacing) + (fastBackground ? 2 : state.isCompact ? 3 : 5);
       for (let slot = 0; slot < visible; slot++) {
         const seed = start + slot;
-        if (seed % 5 === 3) continue;
+        if (fastBackground ? seed % 3 === 1 : seed % (state.isCompact ? 4 : 5) === 3) continue;
         const x = state.worldMinX + slot * spacing - drift - 70;
         const y = rows[(seed * 7) % rows.length] + ((seed * 13) % 18);
         const cat = unlocked[(seed * 5 + state.score) % unlocked.length];
         const text = cat[1][(seed * 3 + state.score) % cat[1].length];
-        skyText(text, x + 106, y + 24, "#ffdd00", "bold 18px Helvetica", 208);
-        skyText(cat[0], x + 106, y + 52, "#efffe8", "bold 12px Helvetica", 208);
+        if (fastBackground) {
+          fastSkyText(text, x + 106, y + 24, "#ffdd00", "bold 17px Helvetica");
+        } else {
+          skyText(text, x + 106, y + 24, "#ffdd00", "bold 18px Helvetica", 208);
+          skyText(cat[0], x + 106, y + 52, "#efffe8", "bold 12px Helvetica", 208);
+        }
       }
     }
 
-    function city() {
+    function city(fastBackground = false) {
       const base = BASE_H - GROUND - 12;
-      const count = Math.floor((state.worldMaxX - state.worldMinX) / 88) + 4;
-      const shift = state.tick * 0.08;
+      const step = fastBackground ? 132 : 88;
+      const count = Math.floor((state.worldMaxX - state.worldMinX) / step) + 4;
+      const shift = state.tick * (fastBackground ? 0.04 : 0.08);
       for (let i = 0; i < count; i++) {
-        const x = state.worldMinX + i * 88 - (shift % 88);
+        const x = state.worldMinX + i * step - (shift % step);
         const h = 60 + (i % 3) * 32;
         ctx.fillStyle = "#244e57";
         ctx.fillRect(x, base - h, 54, h);
+        if (fastBackground) {
+          ctx.fillStyle = i % 2 ? "#f7d84a" : "#8ff3dc";
+          ctx.fillRect(x + 12, base - h + 14, 9, 7);
+          ctx.fillRect(x + 32, base - h + 38, 9, 7);
+          continue;
+        }
         for (let wy = base - h + 12; wy < base - 8; wy += 18) {
           ctx.fillStyle = "#f7d84a";
           ctx.fillRect(x + 9, wy, 9, 7);
@@ -579,19 +597,27 @@
 
     function skyText(text, x, y, color, font, width) {
       ctx.save();
-      ctx.lineWidth = 4;
-      ctx.strokeStyle = "rgba(6, 48, 32, .78)";
-      if (state.score < 24) {
+      const outline = !state.isCompact || state.mode !== "playing";
+      if (outline) {
+        ctx.lineWidth = 4;
+        ctx.strokeStyle = "rgba(6, 48, 32, .78)";
         ctx.shadowColor = "rgba(0, 0, 0, .22)";
         ctx.shadowBlur = 2;
         ctx.shadowOffsetY = 1;
       }
       wrappedText(text, x, y, font, width, line => {
-        ctx.strokeText(line.text, line.x, line.y);
+        if (outline) ctx.strokeText(line.text, line.x, line.y);
         ctx.fillStyle = color;
         ctx.fillText(line.text, line.x, line.y);
       });
       ctx.restore();
+    }
+
+    function fastSkyText(text, x, y, color, font) {
+      ctx.font = font;
+      ctx.textAlign = "center";
+      ctx.fillStyle = color;
+      ctx.fillText(text, x, y);
     }
 
     function textCenter(text, x, y, color, font, width) {
