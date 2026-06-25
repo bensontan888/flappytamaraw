@@ -263,8 +263,7 @@
     }
 
     function scoreSound() {
-      tone({ type: "sine", start: 740, end: 1180, duration: 0.09, gain: 0.11 });
-      setTimeout(() => tone({ type: "sine", start: 980, end: 1480, duration: 0.08, gain: 0.08 }), 55);
+      tone({ type: "square", start: 880, end: 1320, duration: 0.075, gain: 0.13 });
     }
 
     function gameOverSound() {
@@ -344,7 +343,7 @@
 
       for (const gate of state.gates) {
         gate.x -= state.speed * dt;
-        if (!gate.passed && gate.x + gate.w < state.player.x) {
+        if (!gate.passed && gate.x + gate.w * 0.5 < state.player.x) {
           gate.passed = true;
           state.score++;
           scoreSound();
