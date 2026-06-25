@@ -269,6 +269,7 @@
     }
 
     function scoreSound() {
+      if (state.isCompact && state.score >= 14 && state.score % 5 !== 4) return;
       playClip("score");
     }
 
