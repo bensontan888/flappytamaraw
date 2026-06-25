@@ -108,17 +108,38 @@
     };
     const audio = {
       ctx: null,
-      enabled: false
+      enabled: false,
+      unlocking: null
     };
 
     function unlockAudio() {
       if (!audio.ctx) {
         const AudioContext = window.AudioContext || window.webkitAudioContext;
-        if (!AudioContext) return;
+        if (!AudioContext) return Promise.resolve(false);
         audio.ctx = new AudioContext();
       }
-      if (audio.ctx.state === "suspended") audio.ctx.resume();
-      audio.enabled = true;
+      if (audio.ctx.state === "running") {
+        audio.enabled = true;
+        return Promise.resolve(true);
+      }
+      if (!audio.unlocking) {
+        audio.unlocking = audio.ctx.resume()
+          .then(() => {
+            audio.enabled = true;
+            return true;
+          })
+          .catch(() => false)
+          .finally(() => {
+            audio.unlocking = null;
+          });
+      }
+      return audio.unlocking;
+    }
+
+    function playAfterUnlock(sound) {
+      unlockAudio().then(ok => {
+        if (ok) sound();
+      });
     }
 
     function tone({ type = "sine", start = 440, end = start, duration = 0.12, gain = 0.08 }) {
@@ -189,8 +210,8 @@
 
     function input(event) {
       event?.preventDefault();
-      unlockAudio();
       if (state.mode === "ended") {
+        playAfterUnlock(hopSound);
         reset();
         return;
       }
@@ -199,7 +220,7 @@
         state.player.vy = -7.8;
         state.frame = "hop";
         state.hopTicks = 7;
-        hopSound();
+        playAfterUnlock(hopSound);
       }
     }
 
