@@ -120,12 +120,14 @@
       }
       if (audio.ctx.state === "running") {
         audio.enabled = true;
+        primeAudio();
         return Promise.resolve(true);
       }
       if (!audio.unlocking) {
         audio.unlocking = audio.ctx.resume()
           .then(() => {
             audio.enabled = true;
+            primeAudio();
             return true;
           })
           .catch(() => false)
@@ -134,6 +136,19 @@
           });
       }
       return audio.unlocking;
+    }
+
+    function primeAudio() {
+      if (!audio.ctx || audio.primed) return;
+      audio.primed = true;
+      const now = audio.ctx.currentTime;
+      const osc = audio.ctx.createOscillator();
+      const amp = audio.ctx.createGain();
+      amp.gain.setValueAtTime(0.00001, now);
+      osc.connect(amp);
+      amp.connect(audio.ctx.destination);
+      osc.start(now);
+      osc.stop(now + 0.025);
     }
 
     function playAfterUnlock(sound) {
@@ -546,7 +561,10 @@
     }
 
     addEventListener("resize", resize);
+    addEventListener("touchstart", () => unlockAudio(), { passive: true });
+    addEventListener("touchend", () => unlockAudio(), { passive: true });
     addEventListener("pointerdown", input);
+    addEventListener("click", () => unlockAudio());
     addEventListener("keydown", event => {
       if (event.code === "Space" || event.code === "ArrowUp") input(event);
     });
