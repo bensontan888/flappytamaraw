@@ -267,6 +267,7 @@
     }
 
     function scoreSound() {
+      if (state.isCompact && state.score >= 18) return;
       playClip("score");
     }
 
@@ -276,7 +277,7 @@
 
     function resize() {
       state.isCompact = Math.min(innerWidth, innerHeight) < 760 || "ontouchstart" in window;
-      const ratio = Math.min(window.devicePixelRatio || 1, state.isCompact ? 1.5 : 2);
+      const ratio = Math.min(window.devicePixelRatio || 1, state.isCompact ? 1 : 2);
       state.pixelRatio = ratio;
       canvas.width = Math.floor(innerWidth * ratio);
       canvas.height = Math.floor(innerHeight * ratio);
@@ -407,7 +408,7 @@
     }
 
     function drawSky() {
-      const fastBackground = state.isCompact && state.mode === "playing" && state.score >= 18;
+      const fastBackground = state.isCompact && state.mode === "playing" && state.score >= 12;
       const grad = ctx.createLinearGradient(0, state.worldMinY, 0, state.worldMaxY);
       grad.addColorStop(0, "#76c9df");
       grad.addColorStop(0.55, "#a7ddc7");
@@ -415,16 +416,18 @@
       ctx.fillStyle = grad;
       ctx.fillRect(state.worldMinX - 80, state.worldMinY - 80, state.worldMaxX - state.worldMinX + 160, state.worldMaxY - state.worldMinY + 160);
 
-      const cloudStep = fastBackground ? 210 : 120;
-      const cloudExtra = fastBackground ? 2 : 4;
-      for (let i = 0; i < Math.floor((state.worldMaxX - state.worldMinX) / cloudStep) + cloudExtra; i++) {
-        const x = state.worldMinX + ((i * 139 - state.tick * 0.35) % (state.worldMaxX - state.worldMinX + 180)) - 60;
-        const y = 70 + (i % 4) * 78;
-        cloud(x, y, 1 + (i % 3) * 0.18);
+      if (fastBackground) {
+        staticBranding();
+      } else {
+        for (let i = 0; i < Math.floor((state.worldMaxX - state.worldMinX) / 120) + 4; i++) {
+          const x = state.worldMinX + ((i * 139 - state.tick * 0.35) % (state.worldMaxX - state.worldMinX + 180)) - 60;
+          const y = 70 + (i % 4) * 78;
+          cloud(x, y, 1 + (i % 3) * 0.18);
+        }
+        banners();
       }
-      banners(fastBackground);
       city(fastBackground);
-      hills(BASE_H - GROUND - 22, fastBackground ? 28 : 42, "#50756d", fastBackground ? 0.006 : 0.012);
+      hills(BASE_H - GROUND - 22, fastBackground ? 24 : 42, "#50756d", fastBackground ? 0 : 0.012);
       if (!fastBackground) hills(BASE_H - GROUND - 4, 32, "#38655d", 0.02);
     }
 
@@ -456,6 +459,16 @@
           skyText(cat[0], x + 106, y + 52, "#efffe8", "bold 12px Helvetica", 208);
         }
       }
+    }
+
+    function staticBranding() {
+      ctx.font = "bold 17px Helvetica";
+      ctx.textAlign = "center";
+      ctx.fillStyle = "rgba(255, 221, 0, .92)";
+      ctx.fillText("FEU TECH INNOVATION CITY", BASE_W / 2, 128);
+      ctx.font = "bold 12px Helvetica";
+      ctx.fillStyle = "rgba(239, 255, 232, .88)";
+      ctx.fillText("SMART Learning  |  PULSE  |  PARAVERSE", BASE_W / 2, 152);
     }
 
     function city(fastBackground = false) {
