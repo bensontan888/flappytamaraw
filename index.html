@@ -108,7 +108,9 @@
       worldMinY: 0,
       worldMaxY: BASE_H,
       pixelRatio: 1,
-      isCompact: false
+      isCompact: false,
+      bgCache: null,
+      bgCacheKey: ""
     };
     const audio = {
       ctx: null,
@@ -267,7 +269,7 @@
     }
 
     function scoreSound() {
-      if (state.isCompact && state.score >= 18) return;
+      if (state.isCompact) return;
       playClip("score");
     }
 
@@ -285,6 +287,8 @@
       canvas.style.height = `${innerHeight}px`;
       ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
       updateViewBounds();
+      state.bgCache = null;
+      state.bgCacheKey = "";
     }
 
     function updateViewBounds() {
@@ -408,6 +412,10 @@
     }
 
     function drawSky() {
+      if (state.isCompact && state.mode === "playing") {
+        drawCachedMobileSky();
+        return;
+      }
       const fastBackground = state.isCompact && state.mode === "playing" && state.score >= 12;
       const grad = ctx.createLinearGradient(0, state.worldMinY, 0, state.worldMaxY);
       grad.addColorStop(0, "#76c9df");
@@ -436,6 +444,67 @@
       ellipse(x, y, 36 * s, 18 * s);
       ellipse(x + 30 * s, y + 3 * s, 28 * s, 15 * s);
       ellipse(x - 27 * s, y + 4 * s, 22 * s, 13 * s);
+    }
+
+    function drawCachedMobileSky() {
+      const key = `${BASE_W}x${BASE_H}`;
+      if (!state.bgCache || state.bgCacheKey !== key) {
+        const bg = document.createElement("canvas");
+        bg.width = BASE_W;
+        bg.height = BASE_H;
+        const b = bg.getContext("2d");
+        const grad = b.createLinearGradient(0, 0, 0, BASE_H);
+        grad.addColorStop(0, "#76c9df");
+        grad.addColorStop(0.55, "#a7ddc7");
+        grad.addColorStop(1, "#f1d78b");
+        b.fillStyle = grad;
+        b.fillRect(0, 0, BASE_W, BASE_H);
+
+        b.fillStyle = "rgba(255,255,255,.34)";
+        for (const item of [[84, 88, 1], [378, 184, 1.15], [220, 318, .9]]) {
+          mobileCloud(b, item[0], item[1], item[2]);
+        }
+
+        b.textAlign = "center";
+        b.fillStyle = "rgba(255, 221, 0, .94)";
+        b.font = "bold 18px Helvetica";
+        b.fillText("FEU TECH INNOVATION CITY", BASE_W / 2, 128);
+        b.fillStyle = "rgba(239, 255, 232, .9)";
+        b.font = "bold 12px Helvetica";
+        b.fillText("SMART Learning | PULSE | PARAVERSE", BASE_W / 2, 152);
+
+        const base = BASE_H - GROUND - 12;
+        for (let x = -20, i = 0; x < BASE_W + 80; x += 118, i += 1) {
+          const h = 58 + (i % 3) * 28;
+          b.fillStyle = "#244e57";
+          b.fillRect(x, base - h, 54, h);
+          b.fillStyle = i % 2 ? "#f7d84a" : "#8ff3dc";
+          b.fillRect(x + 12, base - h + 14, 9, 7);
+          b.fillRect(x + 32, base - h + 38, 9, 7);
+        }
+
+        b.fillStyle = "#50756d";
+        b.beginPath();
+        b.moveTo(0, BASE_H);
+        for (let x = 0; x <= BASE_W; x += 40) {
+          b.lineTo(x, BASE_H - GROUND - 24 + Math.sin(x / 72) * 24);
+        }
+        b.lineTo(BASE_W, BASE_H);
+        b.closePath();
+        b.fill();
+
+        state.bgCache = bg;
+        state.bgCacheKey = key;
+      }
+      ctx.drawImage(state.bgCache, 0, 0, BASE_W, BASE_H);
+    }
+
+    function mobileCloud(b, x, y, s) {
+      b.beginPath();
+      b.ellipse(x, y, 36 * s, 18 * s, 0, 0, Math.PI * 2);
+      b.ellipse(x + 30 * s, y + 3 * s, 28 * s, 15 * s, 0, 0, Math.PI * 2);
+      b.ellipse(x - 27 * s, y + 4 * s, 22 * s, 13 * s, 0, 0, Math.PI * 2);
+      b.fill();
     }
 
     function banners(fastBackground = false) {
