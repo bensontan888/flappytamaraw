@@ -269,44 +269,7 @@
     }
 
     function scoreSound() {
-      if (state.isCompact) {
-        mobileScoreSound();
-        return;
-      }
       playClip("score");
-    }
-
-    function mobileScoreSound() {
-      if (!audio.ctx) {
-        unlockAudio();
-      }
-      if (!audio.ctx) {
-        playClip("score");
-        return;
-      }
-      if (audio.ctx.state !== "running") {
-        audio.ctx.resume().then(() => mobileScoreSound()).catch(() => playClip("score"));
-        return;
-      }
-      audio.enabled = true;
-      const now = audio.ctx.currentTime;
-      hoofTone(now, 0.055);
-      hoofTone(now + 0.075, 0.045);
-    }
-
-    function hoofTone(startTime, gain) {
-      const osc = audio.ctx.createOscillator();
-      const amp = audio.ctx.createGain();
-      osc.type = "triangle";
-      osc.frequency.setValueAtTime(145, startTime);
-      osc.frequency.exponentialRampToValueAtTime(80, startTime + 0.055);
-      amp.gain.setValueAtTime(0.0001, startTime);
-      amp.gain.exponentialRampToValueAtTime(gain, startTime + 0.006);
-      amp.gain.exponentialRampToValueAtTime(0.0001, startTime + 0.07);
-      osc.connect(amp);
-      amp.connect(audio.ctx.destination);
-      osc.start(startTime);
-      osc.stop(startTime + 0.08);
     }
 
     function gameOverSound() {
